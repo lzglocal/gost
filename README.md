@@ -1,172 +1,361 @@
 gost - GO Simple Tunnel
-====
+======
 
 ### GO语言实现的安全隧道
 
-#### 特性
-1. 支持设置上层代理(客户端，服务器端均可)，支持上层代理认证。
-2. 客户端可用作http(s), socks5代理。
-3. 服务器端兼容标准的socks5协议, 可直接用作socks5代理, 并额外增加协商加密功能。
-4. Tunnel UDP over TCP, UDP数据包使用TCP通道传输，以解决防火墙的限制。
-5. 多种加密方式(tls,aes-256-cfb,des-cfb,rc4-md5等)。
-6. 客户端兼容shadowsocks协议，可作为shadowsocks服务器。
+[![GoDoc](https://godoc.org/github.com/ginuerzh/gost?status.svg)](https://godoc.org/github.com/ginuerzh/gost)
+[![Build Status](https://travis-ci.org/ginuerzh/gost.svg?branch=master)](https://travis-ci.org/ginuerzh/gost)
+[![Go Report Card](https://goreportcard.com/badge/github.com/ginuerzh/gost)](https://goreportcard.com/report/github.com/ginuerzh/gost)
+[![codecov](https://codecov.io/gh/ginuerzh/gost/branch/master/graphs/badge.svg)](https://codecov.io/gh/ginuerzh/gost/branch/master)
+[![GitHub release](https://img.shields.io/github/release/ginuerzh/gost.svg)](https://github.com/ginuerzh/gost/releases/latest)
+[![Snap Status](https://build.snapcraft.io/badge/ginuerzh/gost.svg)](https://build.snapcraft.io/user/ginuerzh/gost)
+[![Docker Build Status](https://img.shields.io/docker/build/ginuerzh/gost.svg)](https://hub.docker.com/r/ginuerzh/gost/)
+ 
+[English README](README_en.md)
 
-二进制文件下载：https://github.com/ginuerzh/gost/releases
+特性
+------
 
-Google讨论组: https://groups.google.com/d/forum/go-gost
+* 多端口监听
+* 可设置转发代理，支持多级转发(代理链)
+* 支持标准HTTP/HTTPS/HTTP2/SOCKS4(A)/SOCKS5代理协议
+* Web代理支持[探测防御](https://docs.ginuerzh.xyz/gost/probe_resist/)
+* [支持多种隧道类型](https://docs.ginuerzh.xyz/gost/configuration/)
+* [SOCKS5代理支持TLS协商加密](https://docs.ginuerzh.xyz/gost/socks/)
+* [Tunnel UDP over TCP](https://docs.ginuerzh.xyz/gost/socks/)
+* [TCP/UDP透明代理](https://docs.ginuerzh.xyz/gost/redirect/)
+* [本地/远程TCP/UDP端口转发](https://docs.ginuerzh.xyz/gost/port-forwarding/)
+* [支持Shadowsocks(TCP/UDP)协议](https://docs.ginuerzh.xyz/gost/ss/)
+* [支持SNI代理](https://docs.ginuerzh.xyz/gost/sni/)
+* [权限控制](https://docs.ginuerzh.xyz/gost/permission/)
+* [负载均衡](https://docs.ginuerzh.xyz/gost/load-balancing/)
+* [路由控制](https://docs.ginuerzh.xyz/gost/bypass/)
+* DNS[解析](https://docs.ginuerzh.xyz/gost/resolver/)和[代理](https://docs.ginuerzh.xyz/gost/dns/)
+* [TUN/TAP设备](https://docs.ginuerzh.xyz/gost/tuntap/)
 
-#### 版本更新
+Wiki站点: <https://docs.ginuerzh.xyz/gost/>
 
-##### v1.8
-* 支持tls tunnel(-tls参数)，直接使用tls进行加密传输
+Telegram讨论群: <https://t.me/gogost>
 
-##### v1.7
-* 支持认证功能，当作为http(s)代理时使用Basic Auth认证方式，当作为标准socks5代理时使用Username/Password认证方式
+Google讨论组: <https://groups.google.com/d/forum/go-gost>
 
-###### Bug fix:
-* 修正当作为http代理时，POST请求出错问题
+安装
+------
 
-##### v1.6
-* 增加tls-auth加密方式，此方式必须设置认证密码(-p参数)，原tls加密方式与v1.3版以前兼容
+#### 二进制文件
 
-###### Bug fix:
-* 修正当不设置上层代理时，连接出错问题
+<https://github.com/ginuerzh/gost/releases>
 
-##### v1.5
-* 支持设置上层socks5代理(注: http tunnel不支持)
-* 支持上层代理认证
+#### 源码编译
 
-##### V1.4
-* 支持http tunnel(-http参数)，使用http协议来传输数据(注: 效率低，非特殊情况下，不推荐使用)。
+```bash
+git clone https://github.com/ginuerzh/gost.git
+cd gost/cmd/gost
+go build
+```
 
-##### v1.3
-* tls加密方式增加密码认证功能(与旧版本不兼容)
-* 增加版本查看(-v参数)
-* -p参数的默认值修改为空
+#### Docker
 
-##### v1.2 
-* websocket tunnel增加加密功能。
+```bash
+docker pull ginuerzh/gost
+```
 
-##### v1.1 
-* 支持websocket tunnel(-ws参数)，使用websocket协议来传输数据。
+#### Ubuntu商店
 
-#### 参数说明
->  -L=":8080": listen address
+```bash
+sudo snap install core
+sudo snap install gost
+```
 
->  -P="": proxy for forward
+快速上手
+------
 
->  -S="": the server that connect to
+#### 不设置转发代理
 
->  -cert="": tls cert file
+<img src="https://ginuerzh.github.io/images/gost_01.png" />
 
->  -key="": tls key file
+* 作为标准HTTP/SOCKS5代理
 
->  -m="": tunnel cipher method
+```bash
+gost -L=:8080
+```
 
->  -p="": tunnel cipher password
+* 设置代理认证信息
 
->  -sm="rc4-md5": shadowsocks cipher method
+```bash
+gost -L=admin:123456@localhost:8080
+```
 
->  -sp="ginuerzh@gmail.com": shadowsocks cipher password
+* 多端口监听
 
->  -ss=false: run as shadowsocks server
+```bash
+gost -L=http2://:443 -L=socks5://:1080 -L=ss://aes-128-cfb:123456@:8338
+```
 
->  -tls=false: use ssl/tls tunnel
+#### 设置转发代理
 
->  -ws=false: use websocket tunnel
+<img src="https://ginuerzh.github.io/images/gost_02.png" />
 
->  -http=false: use http tunnel
+```bash
+gost -L=:8080 -F=192.168.1.1:8081
+```
 
->  -v=false: print version
+* 转发代理认证
+
+```bash
+gost -L=:8080 -F=http://admin:123456@192.168.1.1:8081
+```
+
+#### 设置多级转发代理(代理链)
+
+<img src="https://ginuerzh.github.io/images/gost_03.png" />
+
+```bash
+gost -L=:8080 -F=quic://192.168.1.1:6121 -F=socks5+wss://192.168.1.2:1080 -F=http2://192.168.1.3:443 ... -F=a.b.c.d:NNNN
+```
+
+gost按照-F设置的顺序通过代理链将请求最终转发给a.b.c.d:NNNN处理，每一个转发代理可以是任意HTTP/HTTPS/HTTP2/SOCKS4/SOCKS5/Shadowsocks类型代理。
+
+#### 本地端口转发(TCP)
+
+```bash
+gost -L=tcp://:2222/192.168.1.1:22 [-F=...]
+```
+
+将本地TCP端口2222上的数据(通过代理链)转发到192.168.1.1:22上。当代理链末端(最后一个-F参数)为SSH转发通道类型时，gost会直接使用SSH的本地端口转发功能:
+
+```bash
+gost -L=tcp://:2222/192.168.1.1:22 -F forward+ssh://:2222
+```
+
+#### 本地端口转发(UDP)
+
+```bash
+gost -L=udp://:5353/192.168.1.1:53?ttl=60 [-F=...]
+```
+
+将本地UDP端口5353上的数据(通过代理链)转发到192.168.1.1:53上。
+每条转发通道都有超时时间，当超过此时间，且在此时间段内无任何数据交互，则此通道将关闭。可以通过`ttl`参数来设置超时时间，默认值为60秒。
+
+**注:** 转发UDP数据时，如果有代理链，则代理链的末端(最后一个-F参数)必须是gost SOCKS5类型代理，gost会使用UDP over TCP方式进行转发。
+
+#### 远程端口转发(TCP)
+
+```bash
+gost -L=rtcp://:2222/192.168.1.1:22 [-F=... -F=socks5://172.24.10.1:1080]
+```
+将172.24.10.1:2222上的数据(通过代理链)转发到192.168.1.1:22上。当代理链末端(最后一个-F参数)为SSH转发通道类型时，gost会直接使用SSH的远程端口转发功能:
+
+```bash
+gost -L=rtcp://:2222/192.168.1.1:22 -F forward+ssh://:2222
+```
+
+#### 远程端口转发(UDP)
+
+```bash
+gost -L=rudp://:5353/192.168.1.1:53?ttl=60 [-F=... -F=socks5://172.24.10.1:1080]
+```
+将172.24.10.1:5353上的数据(通过代理链)转发到192.168.1.1:53上。
+每条转发通道都有超时时间，当超过此时间，且在此时间段内无任何数据交互，则此通道将关闭。可以通过`ttl`参数来设置超时时间，默认值为60秒。
+
+**注:** 转发UDP数据时，如果有代理链，则代理链的末端(最后一个-F参数)必须是GOST SOCKS5类型代理，gost会使用UDP-over-TCP方式进行转发。
+
+#### HTTP2
+
+gost的HTTP2支持两种模式：
+* 作为标准的HTTP2代理，并向下兼容HTTPS代理。
+* 作为通道传输其他协议。
+
+##### 代理模式
+服务端:
+```bash
+gost -L=http2://:443
+```
+客户端:
+```bash
+gost -L=:8080 -F=http2://server_ip:443
+```
+
+##### 通道模式
+服务端:
+```bash
+gost -L=h2://:443
+```
+客户端:
+```bash
+gost -L=:8080 -F=h2://server_ip:443
+```
+
+#### QUIC
+gost对QUIC的支持是基于[quic-go](https://github.com/lucas-clemente/quic-go)库。
+
+服务端:
+```bash
+gost -L=quic://:6121
+```
+
+客户端:
+```bash
+gost -L=:8080 -F=quic://server_ip:6121
+```
+
+**注：** QUIC模式只能作为代理链的第一个节点。
+
+#### KCP
+gost对KCP的支持是基于[kcp-go](https://github.com/xtaci/kcp-go)和[kcptun](https://github.com/xtaci/kcptun)库。
+
+服务端:
+```bash
+gost -L=kcp://:8388
+```
+
+客户端:
+```bash
+gost -L=:8080 -F=kcp://server_ip:8388
+```
+
+gost会自动加载当前工作目录中的kcp.json(如果存在)配置文件，或者可以手动通过参数指定配置文件路径：
+```bash
+gost -L=kcp://:8388?c=/path/to/conf/file
+```
+
+**注：** KCP模式只能作为代理链的第一个节点。
+
+#### SSH
+
+gost的SSH支持两种模式：
+* 作为转发通道，配合本地/远程TCP端口转发使用。
+* 作为通道传输其他协议。
+
+##### 转发模式
+服务端:
+```bash
+gost -L=forward+ssh://:2222
+```
+客户端:
+```bash
+gost -L=rtcp://:1222/:22 -F=forward+ssh://server_ip:2222
+```
+
+##### 通道模式
+服务端:
+```bash
+gost -L=ssh://:2222
+```
+客户端:
+```bash
+gost -L=:8080 -F=ssh://server_ip:2222?ping=60
+```
+
+可以通过`ping`参数设置心跳包发送周期，单位为秒。默认不发送心跳包。
 
 
-#### 使用方法
-##### 基本用法
-* 客户端: `gost -L=:8899 -S=server_ip:8080`
-* 服务器: `gost -L=:8080`
+#### 透明代理
+基于iptables的透明代理。
 
-##### 设置认证信息
-* 客户端: `gost -L=admin:123456@:8899 -S=server_ip:8080`
-* 服务器: `gost -L=admin:123456@:8080`
+```bash
+gost -L=redirect://:12345 -F=http2://server_ip:443
+```
 
-注：当服务器端设置了认证，默认的无加密模式(-m为空)不可用，
-即客户端或者使用认证方式(标准socks5模式)，或者设置加密方式(gost兼容模式)。
+#### obfs4
+此功能由[@isofew](https://github.com/isofew)贡献。
 
-##### 设置加密
-* 客户端: `gost -L=:8899 -S=server_ip:8080 -m=rc4-md5 -p=123456`
-* 服务器: `gost -L=:8080 -m=rc4-md5 -p=123456`
+服务端:
+```bash
+gost -L=obfs4://:443
+```
 
-##### 设置上层代理
-* http代理: `gost -L=:8899 -P=http://127.0.0.1:8080`
-* http代理(需认证): `gost -L=:8899 -P=http://admin:123456@127.0.0.1:8080`
-* socks5代理: `gost -L=:8899 -P=socks://127.0.0.1:1080`
-* socks5代理(需认证): `gost -L=:8899 -P=socks://admin:123456@127.0.0.1:1080`
+当服务端运行后会在控制台打印出连接地址供客户端使用:
+```
+obfs4://:443/?cert=4UbQjIfjJEQHPOs8vs5sagrSXx1gfrDCGdVh2hpIPSKH0nklv1e4f29r7jb91VIrq4q5Jw&iat-mode=0
+```
 
-##### 使用tls tunnel (推荐)
-* 客户端: `gost -L=:8899 -S=server_ip:8080 -tls`
-* 服务器: `gost -L=:8080 -tls`
+客户端:
+```
+gost -L=:8888 -F='obfs4://server_ip:443?cert=4UbQjIfjJEQHPOs8vs5sagrSXx1gfrDCGdVh2hpIPSKH0nklv1e4f29r7jb91VIrq4q5Jw&iat-mode=0'
+```
 
-注: 可通过-key, -cert参数手动指定自己的公钥与私钥文件。
+加密机制
+------
 
-##### 使用websocket tunnel
-* 客户端: `gost -L=:8899 -S=server_ip:8080 -ws`
-* 服务器: `gost -L=:8080 -ws`
+#### HTTP
 
-##### 使用http tunnel
-* 客户端: `gost -L=:8899 -S=server_ip:8080 -http`
-* 服务器: `gost -L=:8080 -http`
+对于HTTP可以使用TLS加密整个通讯过程，即HTTPS代理：
 
-注：websocket方式优先级高于http方式，即当-ws与-http参数同时存在时，-http参数无效。
+服务端:
 
-##### 作为shadowsocks服务器
-gost支持作为shadowsocks服务器运行(-ss参数)，这样就可以让android手机通过shadowsocks客户端(影梭)使用代理了。
+```bash
+gost -L=https://:443
+```
+客户端:
 
-###### 相关参数
-> -ss 开启shadowsocks模式
+```bash
+gost -L=:8080 -F=http+tls://server_ip:443
+```
 
-> -sm 设置shadowsocks加密方式(默认为rc4-md5)
+#### HTTP2
 
-> -sp 设置shadowsocks加密密码(默认为ginuerzh@gmail.com)
+gost的HTTP2代理模式仅支持使用TLS加密的HTTP2协议，不支持明文HTTP2传输。
 
-当无-ss参数时，-sm, -sp参数无效。以上三个参数对服务端无效。
+gost的HTTP2通道模式支持加密(h2)和明文(h2c)两种模式。
 
-###### 相关命令
-* 客户端: `gost -L :8899 -S server_ip:port -sm=rc4-md5 -sp=ginuerzh@gmail.com -ss`
-* 服务器: 无需特殊设置，shadowsocks模式只与客户端有关，与服务端无关。
+#### SOCKS5
 
-在手机的shadowsocks软件中设置好服务器IP(运行gost客户端电脑的IP)，端口(8899)，加密方法和密码就可以使用了。
+gost支持标准SOCKS5协议的no-auth(0x00)和user/pass(0x02)方法，并在此基础上扩展了两个：tls(0x80)和tls-auth(0x82)，用于数据加密。
 
-注：shadowsocks模式与正常模式是不兼容的，当作为shadowsocks模式使用时(有-ss参数)，浏览器不能使用。
+服务端:
 
+```bash
+gost -L=socks5://:1080
+```
 
-#### tunnel加密说明
-##### 目前支持的加密方法
-tls, tls-auth, aes-128-cfb, aes-192-cfb, aes-256-cfb, des-cfb, bf-cfb, cast5-cfb, rc4-md5, rc4, table
+客户端:
 
-##### Client
+```bash
+gost -L=:8080 -F=socks5://server_ip:1080
+```
 
-Client端通过-m参数设置加密方式，默认为不加密(-m参数为空)。
+如果两端都是gost(如上)则数据传输会被加密(协商使用tls或tls-auth方法)，否则使用标准SOCKS5进行通讯(no-auth或user/pass方法)。
 
-如果设置的加密方式不被支持，则默认为不加密。
+#### Shadowsocks
+gost对shadowsocks的支持是基于[shadowsocks-go](https://github.com/shadowsocks/shadowsocks-go)库。
 
-当设置的加密方式为tls时，-p参数无效。
+服务端:
 
-当设置的加密方式为非tls时，通过-p参数设置加密密码，且不能为空；-p参数必须与Server端的-p参数相同。
+```bash
+gost -L=ss://chacha20:123456@:8338
+```
+客户端:
 
-##### Server
+```bash
+gost -L=:8080 -F=ss://chacha20:123456@server_ip:8338
+```
 
-Server端通过-m参数设置加密方式，默认为不加密(-m参数为空)。
+##### Shadowsocks UDP relay
 
-如果设置的加密方式不被支持，默认为不处理。
+目前仅服务端支持UDP Relay。
 
-如果没有设置加密方式(-m参数为空)，则由client端控制加密方式，即client端可通过-m参数指定Server端使用哪种加密方式。
+服务端:
 
-如果设置了加密方式(-m参数不为空)，client端必须使用与Server端相同的加密方式。
+```bash
+gost -L=ssu://chacha20:123456@:8338
+```
 
-当设置的加密方式为tls，tls-auth时，-key参数可手动指定公钥文件，-cert参数可手动指定私钥文件，如果未指定，则使用默认的公钥与私钥。
+#### TLS
+gost内置了TLS证书，如果需要使用其他TLS证书，有两种方法：
+* 在gost运行目录放置cert.pem(公钥)和key.pem(私钥)两个文件即可，gost会自动加载运行目录下的cert.pem和key.pem文件。
+* 使用参数指定证书文件路径：
+```bash
+gost -L="http2://:443?cert=/path/to/my/cert/file&key=/path/to/my/key/file"
+```
 
-当设置的加密方式为tls时，-p参数无效；为tls-auth时，通过-p参数设置认证密码，且不能为空。
+对于客户端可以通过`secure`参数开启服务器证书和域名校验:
+```bash
+gost -L=:8080 -F="http2://server_domain_name:443?secure=true"
+```
 
-当设置的加密方式为非tls，tls-auth时，-key，-cert参数无效；通过-p参数设置加密密码，且不能为空。
-
-
+对于客户端可以指定CA证书进行[证书锁定](https://en.wikipedia.org/wiki/Transport_Layer_Security#Certificate_pinning)(Certificate Pinning):
+```bash
+gost -L=:8080 -F="http2://:443?ca=ca.pem"
+```
+证书锁定功能由[@sheerun](https://github.com/sheerun)贡献
